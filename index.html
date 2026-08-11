@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ทีมบริหารการเงินการคลัง โรงพยาบาลท่าตะเกียบ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --primary:#0f766e; --primary-dark:#0b5a54; --primary-light:#ccfbf1;
+  --revenue:#16a34a; --expense:#dc2626; --accent:#2563eb; --warn:#d97706;
+  --bg:#f1f5f9; --card:#ffffff; --border:#e2e8f0; --text:#1e293b; --text-mute:#64748b;
+  --radius:12px; --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);font-size:14.5px;}
+a{color:var(--accent);}
+::-webkit-scrollbar{height:8px;width:8px;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px;}
+/* ===== Top bar ===== */
+.topbar{background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:var(--shadow);position:sticky;top:0;z-index:50;}
+.topbar h1{font-size:17px;margin:0;font-weight:600;display:flex;align-items:center;gap:8px;}
+.topbar h1 .sub{font-size:11.5px;font-weight:400;opacity:.85;display:block;}
+.nav-tabs{display:flex;gap:6px;background:rgba(255,255,255,.12);padding:4px;border-radius:10px;flex-wrap:wrap;}
+.nav-tabs button{border:none;background:transparent;color:#fff;padding:8px 15px;border-radius:8px;font-family:inherit;font-size:13.5px;cursor:pointer;font-weight:500;opacity:.85;transition:.15s;white-space:nowrap;}
+.nav-tabs button.active{background:#fff;color:var(--primary-dark);opacity:1;}
+.nav-tabs button:hover{opacity:1;}
+.user-chip{display:flex;align-items:center;gap:8px;font-size:12px;background:rgba(255,255,255,.12);padding:7px 14px;border-radius:20px;white-space:nowrap;}
+/* ===== Layout ===== */
+.page{padding:20px 22px 60px;max-width:1400px;margin:0 auto;}
+.hidden{display:none !important;}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;border:1px solid var(--border);margin-bottom:16px;}
+.section-block{margin-top:8px;margin-bottom:36px;}
+.section-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+.section-badge{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;}
+.section-head h2{font-size:17px;margin:0;font-weight:700;color:var(--text);}
+.section-head .cap2{font-size:12px;color:var(--text-mute);margin-top:4px;line-height:1.5;}
+/* ===== Filters ===== */
+.filters{display:flex;gap:14px;flex-wrap:wrap;align-items:end;}
+.filter-item label{display:block;font-size:11.5px;color:var(--text-mute);margin-bottom:4px;font-weight:500;}
+.filter-item select,.filter-item input{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;background:#fff;min-width:150px;}
+.seg-toggle{display:flex;background:#f1f5f9;border-radius:8px;padding:3px;gap:2px;}
+.seg-toggle button{border:none;background:transparent;padding:7px 14px;border-radius:6px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text-mute);}
+.seg-toggle button.active{background:#fff;color:var(--primary-dark);box-shadow:var(--shadow);}
+/* ===== KPI cards ===== */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px;}
+.kpi-card{position:relative;overflow:hidden;}
+.kpi-card .label{font-size:12px;color:var(--text-mute);font-weight:500;margin-bottom:6px;}
+.kpi-card .value{font-size:22px;font-weight:700;line-height:1.2;}
+.kpi-card .sub{font-size:11px;margin-top:5px;color:var(--text-mute);font-weight:500;}
+.kpi-card.revenue .value{color:var(--revenue);}
+.kpi-card.expense .value{color:var(--expense);}
+.kpi-card .value.pos{color:var(--revenue);}
+.kpi-card .value.neg{color:var(--expense);}
+.kpi-badge{position:absolute;top:14px;right:16px;font-size:22px;opacity:.28;}
+.mini-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px;}
+.mini-kpi{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:11px 14px;}
+.mini-kpi .l{font-size:11px;color:var(--text-mute);margin-bottom:4px;font-weight:500;}
+.mini-kpi .v{font-size:16.5px;font-weight:700;}
+/* ===== Charts ===== */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:1000px){.chart-grid{grid-template-columns:1fr;} .section-2col{grid-template-columns:1fr !important;}}
+.chart-card h3{margin:0 0 2px;font-size:14.5px;font-weight:600;}
+.chart-card .cap{font-size:11.5px;color:var(--text-mute);margin-bottom:10px;line-height:1.5;}
+.chart-wrap{position:relative;height:300px;}
+.chart-wrap.small{height:260px;}
+.section-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+/* ===== fy tabs ===== */
+.fy-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;}
+.fy-tab-btn{flex-shrink:0;border:1px solid var(--border);background:#fff;padding:6px 16px;border-radius:20px;font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--text-mute);font-weight:600;white-space:nowrap;transition:.15s;}
+.fy-tab-btn:hover{background:#f8fafc;}
+.fy-tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+/* ===== Tables ===== */
+.table-scroll{overflow:auto;max-height:440px;border:1px solid var(--border);border-radius:10px;}
+table.grid{width:100%;border-collapse:collapse;font-size:12.8px;}
+table.grid th{background:#f8fafc;position:sticky;top:0;text-align:right;padding:9px 11px;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;color:var(--text-mute);z-index:1;}
+table.grid th:first-child,table.grid td:first-child{text-align:left;}
+table.grid td{padding:7px 11px;border-bottom:1px solid #f1f5f9;text-align:right;}
+table.grid tr:hover td{background:#f8fafc;}
+table.grid tr.total-row td{font-weight:700;background:#f0fdf4 !important;border-top:2px solid var(--border);}
+table.grid input,table.grid select{width:100%;min-width:90px;border:1px solid transparent;background:transparent;padding:5px 6px;font-family:inherit;font-size:12.5px;border-radius:5px;text-align:right;}
+table.grid input.txt{text-align:left;}
+table.grid input:hover,table.grid select:hover{border-color:var(--border);}
+table.grid input:focus,table.grid select:focus{border-color:var(--accent);background:#fff;outline:none;}
+.pos{color:var(--revenue);}
+.neg{color:var(--expense);}
+/* ===== Buttons ===== */
+.btn{border:none;border-radius:8px;padding:9px 16px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{background:#f8fafc;}
+.btn-danger{background:#fee2e2;color:var(--expense);}
+.btn-danger:hover{background:#fecaca;}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+/* ===== Admin subnav ===== */
+.subnav{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.subnav button{border:none;background:transparent;padding:10px 16px;font-family:inherit;font-size:13.5px;cursor:pointer;color:var(--text-mute);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.subnav button.active{color:var(--primary-dark);border-bottom-color:var(--primary);}
+.subnav.pill{border-bottom:none;margin-bottom:10px;}
+.subnav.pill button{border:1px solid var(--border);border-radius:20px;margin-bottom:0;padding:7px 14px;font-size:12.5px;}
+.subnav.pill button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+/* ===== Upload zone ===== */
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;background:#fafcff;transition:.15s;}
+.upload-zone.drag{border-color:var(--primary);background:var(--primary-light);}
+.upload-zone .icon{font-size:34px;}
+.tag{font-size:11px;background:var(--primary-light);color:var(--primary-dark);padding:2px 9px;border-radius:6px;font-weight:600;}
+.flex-between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.note{font-size:11.5px;color:var(--text-mute);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:12px;line-height:1.6;}
+.note.warn{background:#fffbeb;border-color:#fde68a;color:#7c5800;}
+.note.danger{background:#fef2f2;border-color:#fecaca;color:#991b1b;}
+details{margin-top:10px;}
+details summary{cursor:pointer;font-size:13.5px;font-weight:700;color:var(--primary-dark);padding:8px 0;}
+/* ===== Toast ===== */
+.toast{position:fixed;bottom:24px;right:24px;background:#111827;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:200;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+/* ===== text settings ===== */
+.ts-field{margin-bottom:14px;max-width:480px;}
+.ts-field label{display:block;font-size:11.5px;color:var(--text-mute);margin-bottom:4px;font-weight:500;}
+.ts-field input{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;background:#fff;}
+.ts-field input:focus{border-color:var(--accent);outline:none;}
+footer.site{text-align:center;font-size:11.5px;color:var(--text-mute);padding:26px 16px 40px;}
+/* ===== Login modal ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:300;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:#fff;border-radius:14px;padding:28px 26px;width:100%;max-width:340px;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+.modal-box h3{margin:0 0 4px;font-size:16px;}
+.modal-box p{margin:0 0 18px;font-size:12.5px;color:var(--text-mute);}
+.modal-box label{display:block;font-size:11.5px;color:var(--text-mute);margin-bottom:4px;font-weight:500;}
+.modal-box input{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;margin-bottom:12px;box-sizing:border-box;}
+.modal-box input:focus{border-color:var(--accent);outline:none;}
+.modal-actions{display:flex;gap:8px;margin-top:6px;}
+.modal-actions button{flex:1;}
+.modal-error{font-size:12px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin-bottom:12px;display:none;}
+.modal-error.show{display:block;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1><img src="logo.png" alt="โลโก้โรงพยาบาลท่าตะเกียบ" style="height:36px;vertical-align:middle;margin-right:8px;border-radius:4px;"> <span id="dashTitle">Dashboard การเงินและปฏิบัติการ</span>
+    <span class="sub" id="dashSubtitle">โรงพยาบาลท่าตะเกียบ — ข้อมูลจากการประชุมทีมบริหารการเงินการคลัง 11 สิงหาคม 2569</span>
+  </h1>
+  <div class="nav-tabs" id="navTabs">
+    <button data-tab="sec1" class="active">📊 1. รายรับ-รายจ่าย</button>
+    <button data-tab="sec2">🩺 2. บริการและรายได้</button>
+    <button data-tab="sec3">🏦 3. โอนเงิน สปสช.</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="user-chip">🕒 <span id="lastUpdatedBadge">อัปเดตล่าสุด: -</span></div>
+    <button id="adminEntryBtn" class="user-chip" style="border:none;cursor:pointer;font-family:inherit;">🔒 ผู้ดูแลระบบ</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ===================== SECTION 1 ===================== -->
+  <section id="sec1" class="section-block">
+    <div class="section-head">
+      <div class="section-badge">1</div>
+      <div>
+        <h2>รายรับ-รายจ่าย (กำไรขาดทุน)</h2>
+        <div class="cap2" id="cap_sec1_intro">Fact รายรับ-รายจ่ายรายเดือน — เอกสาร "ประชุมทีมบริหารการเงินการคลัง 11 สิงหาคม 2569.pdf" หน้า 59–62 (ปีงบ 2569 มีข้อมูลถึงเดือน มิ.ย.69 เท่านั้น)</div>
+      </div>
+    </div>
+
+    <div class="filters card">
+      <div class="filter-item">
+        <label>ปีงบประมาณ (Fiscal Year)</label>
+        <select id="fyFilter1"></select>
+      </div>
+      <div class="filter-item">
+        <label>มุมมองกราฟ (Chart View)</label>
+        <div class="seg-toggle" id="viewModeToggle1">
+          <button type="button" data-mode="monthly" class="active">รายเดือน</button>
+          <button type="button" data-mode="compare">เปรียบเทียบรายปี</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpi1"></div>
+
+    <div class="card chart-card">
+      <h3>แนวโน้มรายรับ-รายจ่าย-กำไร(ขาดทุน)</h3>
+      <div class="cap" id="cap_sec1_chart">แหล่งข้อมูล: "สรุปผลกำไร(ขาดทุน) ในแต่ละเดือน" ประจำปีงบประมาณ 2566–2569 — หน้า 59–62</div>
+      <div class="chart-wrap"><canvas id="chartPL"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 4px;font-size:14.5px;">ตารางรายรับ-รายจ่าย-กำไร(ขาดทุน) รายเดือน</h3>
+      <div class="cap2" id="cap_sec1_tablenote" style="margin-bottom:10px;">ตัวเลขตรงตามเอกสารต้นฉบับทุกประการ — เลือกปีงบด้วยแท็บด้านล่าง</div>
+      <div class="fy-tabs" id="plFyTabs"></div>
+      <div class="table-scroll" style="max-height:420px;">
+        <table class="grid" id="tblPLMonthly"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>รายละเอียดรายรับแยกตามประเภท (รายปีงบประมาณ) — คลิกเพื่อดู</summary>
+        <div class="cap2" id="cap_sec1_revenue" style="margin:6px 0 10px;">แหล่งข้อมูล: "สรุปรายรับ ประจำปีงบประมาณ 2566–2569" หน้า 33</div>
+        <div class="table-scroll"><table class="grid" id="tblRevenueDetail"></table></div>
+      </details>
+      <details>
+        <summary>รายละเอียดรายจ่ายแยกตามประเภท (รายปีงบประมาณ) — คลิกเพื่อดู</summary>
+        <div class="cap2" id="cap_sec1_expense" style="margin:6px 0 10px;">แหล่งข้อมูล: "สรุปรายจ่าย ประจำปีงบประมาณ 2566–2568" หน้า 58 (รวมค่าไฟฟ้า รพ. แยกต่างหาก)</div>
+        <div class="table-scroll"><table class="grid" id="tblExpenseDetail"></table></div>
+        <div class="table-scroll" style="margin-top:10px;max-height:none;"><table class="grid" id="tblElectricity"></table></div>
+      </details>
+      <div class="note warn" id="plGapNote"><strong>⚠️ หมายเหตุความคลาดเคลื่อนเล็กน้อยระหว่างตาราง:</strong> <span id="cap_sec1_gapnote">ยอดรวมรายจ่ายปีงบ 2566 จากตารางรายเดือน (หน้า 59) = 115,862,696.67 บาท ต่างจากยอดรวมในตารางสรุปรายจ่ายรายปี (หน้า 58) = 115,800,020.51 บาท (ต่างกัน 62,676.16 บาท) และยอดรวมรายรับปีงบ 2568 จากตารางรายเดือน (หน้า 61) = 87,097,014.29 บาท ต่างจากตารางสรุปรายรับรายปี (หน้า 33) = 87,096,714.29 บาท (ต่างกัน 300.00 บาท) ความคลาดเคลื่อนนี้มีอยู่แล้วในเอกสารต้นฉบับ ไม่ได้เกิดจากการคำนวณใหม่ จึงแสดงไว้ตามที่ปรากฏจริงทั้งสองแหล่งเพื่อความโปร่งใส</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 2 ===================== -->
+  <section id="sec2" class="section-block">
+    <div class="section-head">
+      <div class="section-badge">2</div>
+      <div>
+        <h2>บริการและรายได้ (รายเดือน / รายฝ่าย)</h2>
+        <div class="cap2" id="cap_sec2_intro">Fact การให้บริการและรายได้ — ช่วงเวลา ต.ค.68–มิ.ย.69 — เอกสารต้นฉบับ หน้า 16–17</div>
+      </div>
+    </div>
+
+    <div class="mini-kpi-row" id="kpi2"></div>
+
+    <div class="chart-grid">
+      <div class="card chart-card">
+        <h3>รายเดือน</h3>
+        <div class="cap" id="cap_sec2_chartmonthly">หน้า 16 · รายได้ผู้ป่วยในและ OPAE บันทึกรวมในงานประกัน (ตามหมายเหตุต้นฉบับ)</div>
+        <div class="chart-wrap"><canvas id="chartServiceMonthly"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <h3>รายฝ่าย</h3>
+        <div class="cap" id="cap_sec2_chartdept">หน้า 17</div>
+        <div class="chart-wrap"><canvas id="chartServiceDept"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-2col">
+      <div class="card">
+        <h3 style="margin-top:0;font-size:14.5px;">ตารางรายเดือน</h3>
+        <div class="table-scroll"><table class="grid" id="tblServiceMonthly"></table></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:14.5px;">ตารางรายฝ่าย</h3>
+        <div class="table-scroll"><table class="grid" id="tblServiceDept"></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 4px;font-size:14.5px;">เงินชดเชยจาก สปสช. แยกตามกองทุน (รายปีงบประมาณ)</h3>
+      <div class="cap2" id="cap_sec2_fund" style="margin-bottom:10px;">แหล่งข้อมูล: "กองทุนค่าบริการทางการแพทย์" หน้า 33 · ปีงบ 2569 ข้อมูลถึงเดือน ก.ค.69 (ต่างจากตารางอื่นในหน้านี้ที่ถึง มิ.ย.69 — ตามที่ระบุไว้ในเอกสารต้นฉบับ)</div>
+      <div class="fy-tabs" id="fundFyTabs"></div>
+      <div class="table-scroll"><table class="grid" id="tblFundType"></table></div>
+      <div class="note">
+        <strong>หมายเหตุการตรวจสอบผลรวม (sum-check):</strong> ยอดรวมที่แสดง ("รวม") เป็นตัวเลขที่ระบุไว้ในเอกสารต้นฉบับโดยตรง
+        จากการตรวจสอบพบว่าผลรวมของรายการย่อยปีงบ 2567 เมื่อบวกด้วยมือได้ 77,750,113.74 บาท ซึ่งต่างจากยอดรวมที่ระบุในเอกสารต้นฉบับ (77,719,639.56 บาท) อยู่ 30,474.18 บาท
+        ความคลาดเคลื่อนนี้มีอยู่แล้วในเอกสารต้นฉบับ (หน้า 33) จึงคงยอดรวมไว้ตามเอกสารต้นฉบับเพื่อความถูกต้องตรงกับเอกสารต้นทาง มิได้ใช้ผลรวมที่คำนวณขึ้นใหม่
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 4px;font-size:14.5px;">เงินชดเชยจาก สปสช. แยกรายฝ่าย</h3>
+      <div class="cap2" id="cap_sec2_deptfund" style="margin-bottom:10px;">แหล่งข้อมูล: "แหล่งหารายได้เพิ่ม แยกรายฝ่าย" หน้า 32–55</div>
+      <div class="note warn">
+        <strong>ข้อจำกัดของข้อมูล:</strong> เอกสารต้นทางมีตารางตัวเลขครบเฉพาะ 3 หน่วยงาน ได้แก่ งานกายภาพ (หน้า 41), OPD/NCD (หน้า 43) และ IPD (หน้า 45)
+        ส่วนหน่วยงานงานปฐมภูมิและองค์รวม, แพทย์แผนไทย, กลุ่มงานจิตเวช และทันตกรรม มีเฉพาะหัวข้อแต่ไม่มีตารางตัวเลขแนบในเอกสารต้นฉบับ (หน้า 35–39, 46–52, 53–55)
+        จึงไม่นำมาแสดงเพื่อไม่ให้เกิดการสมมติข้อมูลขึ้นเอง
+      </div>
+      <div class="section-2col" style="margin-top:14px;">
+        <div>
+          <h3 style="font-size:13.5px;">งานกายภาพ (ปีงบ 2566–2569)</h3>
+          <div class="table-scroll"><table class="grid" id="tblDeptPT"></table></div>
+        </div>
+        <div>
+          <h3 style="font-size:13.5px;">OPD/NCD (ปีงบ 2568–2569)</h3>
+          <div class="table-scroll"><table class="grid" id="tblDeptOPD"></table></div>
+          <h3 style="font-size:13.5px;margin-top:14px;">IPD (ปีงบ 2568–2569)</h3>
+          <div class="table-scroll"><table class="grid" id="tblDeptIPD"></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3 ===================== -->
+  <section id="sec3" class="section-block">
+    <div class="section-head">
+      <div class="section-badge">3</div>
+      <div>
+        <h2>การโอนเงิน สปสช. (NHSO Fund Transfer)</h2>
+        <div class="cap2" id="cap_sec3_intro">1 ตุลาคม 2568 – 31 กรกฎาคม 2569 · แหล่งข้อมูล: "รายงานการโอนเงินของ สปสช." หน้า 14</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpi3"></div>
+
+    <div class="card chart-card">
+      <h3>สัดส่วนเงินโอนเข้าบัญชี แยกตามกองทุนย่อย (10 อันดับแรก)</h3>
+      <div class="cap" id="cap_sec3_chart">Gross → หัก (Deduction) / ชะลอ (Hold) → เงินโอนเข้าบัญชีจริง (Net)</div>
+      <div class="chart-wrap"><canvas id="chartSSO"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 4px;font-size:14.5px;">ตารางรายงานการโอนเงินของ สปสช. ทั้งหมด</h3>
+      <div class="cap2" id="cap_sec3_table" style="margin-bottom:10px;">รวม 19 รายการ ตัวเลขตรงตามเอกสารต้นฉบับทุกช่อง</div>
+      <div class="table-scroll"><table class="grid" id="tblSSO"></table></div>
+      <div class="note" id="ssoWordsNote"></div>
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN ===================== -->
+  <section id="secAdmin" class="section-block">
+    <div class="section-head flex-between">
+      <div style="display:flex;gap:14px;">
+        <div class="section-badge" style="background:var(--accent);">⚙</div>
+        <div>
+          <h2>จัดการข้อมูล Dashboard</h2>
+          <div class="cap2">นำเข้า/แก้ไข/ส่งออกข้อมูล — การเปลี่ยนแปลงจะถูกบันทึกไว้ในเบราว์เซอร์นี้ (localStorage) โดยอัตโนมัติ</div>
+        </div>
+      </div>
+      <button id="adminLogoutBtn" class="btn" style="white-space:nowrap;">🚪 ออกจากระบบ</button>
+    </div>
+
+    <div class="subnav" id="adminMainTabs">
+      <button data-atab="import" class="active">📥 นำเข้าข้อมูล (Import)</button>
+      <button data-atab="grid">📋 จัดการข้อมูล (Data Grid)</button>
+      <button data-atab="export">🧾 ส่งออก / สำรองข้อมูล</button>
+      <button data-atab="settings">🖊️ ตั้งค่าข้อความ</button>
+      <button data-atab="log">🕒 ประวัติการเปลี่ยนแปลง</button>
+    </div>
+
+    <div id="atab-import">
+      <div class="card">
+        <div class="filter-item" style="margin-bottom:14px;max-width:420px;">
+          <label>เลือกตารางปลายทาง (Target Table)</label>
+          <select id="importTableSelect"></select>
+        </div>
+        <div class="upload-zone" id="uploadZone">
+          <div class="icon">📄</div>
+          <p style="margin:8px 0 12px;color:var(--text-mute);">ลากไฟล์ .xlsx / .csv มาวาง หรือ</p>
+          <label class="btn btn-primary" style="cursor:pointer;">
+            เลือกไฟล์ Excel
+            <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none;">
+          </label>
+          <p style="margin:10px 0 0;font-size:11.5px;color:var(--text-mute);">แถวแรกของไฟล์ต้องเป็นชื่อคอลัมน์ตรงกับหัวตารางของ Excel ต้นแบบที่แนบมาด้วย</p>
+        </div>
+        <div id="importPreview"></div>
+        <div class="btn-row" id="importActions" style="display:none;">
+          <button class="btn btn-primary" id="importAppendBtn">➕ เพิ่มต่อท้าย (Append)</button>
+          <button class="btn btn-outline" id="importOverwriteBtn">♻️ เขียนทับทั้งหมด (Overwrite)</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="atab-grid" class="hidden">
+      <div class="subnav pill" id="gridTableTabs"></div>
+      <div class="card">
+        <div class="flex-between">
+          <span id="gridRowCount" style="font-size:12px;color:var(--text-mute);"></span>
+          <div class="btn-row" style="margin-top:0;">
+            <button class="btn btn-outline btn-sm" id="addRowBtn">+ เพิ่มแถว</button>
+            <button class="btn btn-primary btn-sm" id="saveGridBtn">💾 บันทึกการแก้ไข</button>
+            <button class="btn btn-outline btn-sm" id="resetTableBtn">↺ คืนค่าตารางนี้เป็นต้นฉบับ</button>
+          </div>
+        </div>
+        <div class="table-scroll" style="margin-top:12px;"><table class="grid" id="adminGrid"></table></div>
+      </div>
+    </div>
+
+    <div id="atab-export" class="hidden">
+      <div class="card">
+        <div class="cap2" style="margin-bottom:14px;">ส่งออกข้อมูลปัจจุบันทั้งหมดเป็นไฟล์ Excel (ใช้สำรองข้อมูล หรือส่งต่อให้ผู้อื่นนำเข้า)</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn btn-primary" id="exportAllBtn">⬇️ ส่งออกข้อมูลทั้งหมด (.xlsx)</button>
+          <button class="btn btn-outline" id="exportJsonBtn">⬇️ ส่งออกเป็น JSON (สำรองแบบเต็ม)</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 6px;font-size:14.5px;">รีเซ็ตข้อมูลทั้งหมด</h3>
+        <div class="cap2" style="margin-bottom:12px;">หากข้อมูลผิดพลาดทั้งหมด สามารถล้างการแก้ไขทั้งหมดและกลับไปใช้ชุดข้อมูลตั้งต้นจากเอกสารประชุมได้</div>
+        <button class="btn btn-danger" id="resetAllBtn">รีเซ็ตข้อมูลทั้งหมดเป็นค่าตั้งต้น</button>
+      </div>
+    </div>
+
+    <div id="atab-settings" class="hidden">
+      <div class="card">
+        <div class="flex-between">
+          <h3 style="margin:0;font-size:14.5px;">ตั้งค่าข้อความที่แสดงบนหน้า Dashboard</h3>
+          <button class="btn btn-primary btn-sm" id="saveSettingsBtn">💾 บันทึกข้อความ</button>
+        </div>
+        <div class="note" style="margin-top:10px;">แก้ไขชื่อระบบและคำบรรยายใต้ชื่อที่แสดงบน Topbar โดยไม่ต้องแก้โค้ด — บันทึกแล้วมีผลทันที</div>
+        <div class="ts-field" style="margin-top:14px;"><label>ชื่อ Dashboard</label><input type="text" id="settingTitle"></div>
+        <div class="ts-field"><label>คำบรรยายใต้ชื่อ</label><input type="text" id="settingSubtitle"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="flex-between">
+          <h3 style="margin:0;font-size:14.5px;">แก้ไขคำอธิบาย/แหล่งข้อมูล (Captions)</h3>
+          <button class="btn btn-primary btn-sm" id="saveCaptionsBtn">💾 บันทึกคำอธิบาย</button>
+        </div>
+        <div class="note" style="margin-top:10px;">แก้ไขข้อความอธิบายที่แสดงใต้หัวข้อ/กราฟ/ตารางในแต่ละส่วนของ Dashboard — บันทึกแล้วมีผลทันที</div>
+        <div id="captionFieldsWrap" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <div id="atab-log" class="hidden">
+      <div class="card">
+        <div class="flex-between">
+          <h3 style="margin:0;font-size:14.5px;">ประวัติการอัปเดตข้อมูล (History Log)</h3>
+          <button class="btn btn-outline btn-sm" id="clearLogBtn">↺ ล้างประวัติ</button>
+        </div>
+        <div class="table-scroll" style="margin-top:12px;max-height:300px;">
+          <table class="grid" id="logsTable"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer class="site">
+  <span id="cap_footer">Dashboard นี้จัดทำจากข้อมูลจริงในเอกสาร "ประชุมทีมบริหารการเงินการคลัง 11 สิงหาคม 2569.pdf" เท่านั้น ไม่มีการสมมติตัวเลขเพิ่มเติม · ไฟล์ HTML เดียว ทำงานได้โดยไม่ต้องเชื่อมต่อเซิร์ฟเวอร์ (ยกเว้นการโหลดฟอนต์/ไลบรารีกราฟ/Excel จาก CDN ครั้งแรก)</span>
+</footer>
+
+<!-- ===================== ADMIN LOGIN MODAL ===================== -->
+<div class="modal-overlay" id="loginOverlay">
+  <div class="modal-box">
+    <h3>🔒 เข้าสู่ระบบผู้ดูแลระบบ</h3>
+    <p>กรุณาเข้าสู่ระบบเพื่อจัดการข้อมูล Dashboard</p>
+    <div class="modal-error" id="loginError">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    <form id="loginForm">
+      <label>ชื่อผู้ใช้ (Username)</label>
+      <input type="text" id="loginUser" autocomplete="username" required>
+      <label>รหัสผ่าน (Password)</label>
+      <input type="password" id="loginPass" autocomplete="current-password" required>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="loginCancelBtn">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">เข้าสู่ระบบ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   SEED DATA — ถอดความจากเอกสาร "ประชุมทีมบริหารการเงินการคลัง 11 สิงหาคม 2569.pdf"
+   ทุกตัวเลขคัดลอกตรงจากเอกสารต้นฉบับ (อ้างอิงเลขหน้า PDF ตามที่ระบุในแต่ละส่วน)
+   ========================================================================= */
+const SEED_DATA = {
+meta:{
+  hospital:"โรงพยาบาลท่าตะเกียบ",
+  title:"Dashboard การเงินและปฏิบัติการ",
+  subtitle:"โรงพยาบาลท่าตะเกียบ — ข้อมูลจากการประชุมทีมบริหารการเงินการคลัง 11 สิงหาคม 2569",
+  sourceFile:"ประชุมทีมบริหารการเงินการคลัง 11 สิงหาคม 2569.pdf"
+},
+// หน้า 59-62 : สรุปผลกำไร(ขาดทุน) ในแต่ละเดือน ประจำปีงบประมาณ 2566-2569
+monthlyPL:[
+ {fy:2566,month:"ต.ค.-65",rev:6692489.99,exp:6094106.77},
+ {fy:2566,month:"พ.ย.-65",rev:36525373.56,exp:4819207.97},
+ {fy:2566,month:"ธ.ค.-65",rev:28695502.72,exp:14382181.94},
+ {fy:2566,month:"ม.ค.-66",rev:24382131.44,exp:13662363.76},
+ {fy:2566,month:"ก.พ.-66",rev:5441717.54,exp:8332692.95},
+ {fy:2566,month:"มี.ค.-66",rev:6718780.48,exp:9930603.89},
+ {fy:2566,month:"เม.ย.-66",rev:1804620.89,exp:6117238.05},
+ {fy:2566,month:"พ.ค.-66",rev:1762688.26,exp:9616511.09},
+ {fy:2566,month:"มิ.ย.-66",rev:5638984.26,exp:11692511.09},
+ {fy:2566,month:"ก.ค.-66",rev:2479892.01,exp:8643339.03},
+ {fy:2566,month:"ส.ค.-66",rev:3155388.11,exp:6342974.71},
+ {fy:2566,month:"ก.ย.-66",rev:4672550.60,exp:16228965.42},
+ {fy:2567,month:"ต.ค.-66",rev:14251305.59,exp:9597964.07},
+ {fy:2567,month:"พ.ย.-66",rev:9715244.84,exp:8065125.71},
+ {fy:2567,month:"ธ.ค.-66",rev:14232983.14,exp:12745145.96},
+ {fy:2567,month:"ม.ค.-67",rev:3790452.04,exp:6003929.87},
+ {fy:2567,month:"ก.พ.-67",rev:3546920.47,exp:7411321.12},
+ {fy:2567,month:"มี.ค.-67",rev:9186388.38,exp:7524367.97},
+ {fy:2567,month:"เม.ย.-67",rev:2457343.88,exp:5893530.68},
+ {fy:2567,month:"พ.ค.-67",rev:1856275.81,exp:7167321.25},
+ {fy:2567,month:"มิ.ย.-67",rev:5164177.54,exp:7978111.74},
+ {fy:2567,month:"ก.ค.-67",rev:21116529.88,exp:7145485.41},
+ {fy:2567,month:"ส.ค.-67",rev:1865720.42,exp:9798292.12},
+ {fy:2567,month:"ก.ย.-67",rev:4110080.28,exp:8585111.77},
+ {fy:2568,month:"ต.ค.-67",rev:6892487.97,exp:8927333.08},
+ {fy:2568,month:"พ.ย.-67",rev:10490326.22,exp:7197675.86},
+ {fy:2568,month:"ธ.ค.-67",rev:19620442.44,exp:9452150.94},
+ {fy:2568,month:"ม.ค.-68",rev:5430756.26,exp:6892490.35},
+ {fy:2568,month:"ก.พ.-68",rev:16979571.02,exp:8450692.74},
+ {fy:2568,month:"มี.ค.-68",rev:2994993.14,exp:6123700.70},
+ {fy:2568,month:"เม.ย.-68",rev:6711672.40,exp:6629573.48},
+ {fy:2568,month:"พ.ค.-68",rev:7388622.62,exp:8994150.83},
+ {fy:2568,month:"มิ.ย.-68",rev:3439481.12,exp:8372480.89},
+ {fy:2568,month:"ก.ค.-68",rev:2047974.50,exp:8489012.24},
+ {fy:2568,month:"ส.ค.-68",rev:3297984.85,exp:7067491.23},
+ {fy:2568,month:"ก.ย.-68",rev:1802701.75,exp:7041344.52},
+ {fy:2569,month:"ต.ค.-68",rev:29102799.89,exp:13422176.33},
+ {fy:2569,month:"พ.ย.-68",rev:2508889.86,exp:9504813.25},
+ {fy:2569,month:"ธ.ค.-68",rev:3260786.01,exp:6425703.03},
+ {fy:2569,month:"ม.ค.-69",rev:2982101.37,exp:9299259.67},
+ {fy:2569,month:"ก.พ.-69",rev:11855692.91,exp:5007238.09},
+ {fy:2569,month:"มี.ค.-69",rev:18134667.04,exp:12902840.73},
+ {fy:2569,month:"เม.ย.-69",rev:3330495.30,exp:5684009.98},
+ {fy:2569,month:"พ.ค.-69",rev:2313888.39,exp:9565856.06},
+ {fy:2569,month:"มิ.ย.-69",rev:6640109.27,exp:9614594.22}
+],
+plAnnualTotalsFromMonthlyTable:{
+  2566:{rev:127970119.86,exp:115862696.67,profit:12107423.19},
+  2567:{rev:91293422.27,exp:97915707.67,profit:-6622285.40},
+  2568:{rev:87097014.29,exp:93638096.86,profit:-6541082.57},
+  2569:{rev:80129430.04,exp:81426491.36,profit:-1297061.32}
+},
+revenueAnnualTotalsFromDetailTable:{
+  2566:127970119.86, 2567:91293422.27, 2568:87096714.29, 2569:80129430.04
+},
+expenseAnnualTotalsFromDetailTable:{
+  2566:115800020.51, 2567:97915707.67, 2568:93638096.86, 2569:81426491.36
+},
+electricity:[
+ {fy:2566,amount:2775575.56,note:""},
+ {fy:2567,amount:2794586.49,note:""},
+ {fy:2568,amount:2148991.19,note:""},
+ {fy:2569,amount:1463204.73,note:"ต.ค.68–มิ.ย.69"}
+],
+revenueDetail:[
+ {item:"รับเงินค่ายา (พรบ., ข้าราชการ, จ่ายเงินสด, UC)",fy2566:3384252.50,fy2567:4040835.00,fy2568:4950029.00,fy2569:2641881.75},
+ {item:"ค่าธรรมเนียม 30 ต่างด้าว",fy2566:46020.00,fy2567:50202.00,fy2568:53450.00,fy2569:41310.00},
+ {item:"ค่าธรรมเนียม 30 UC",fy2566:350270.00,fy2567:408419.00,fy2568:401330.00,fy2569:325980.00},
+ {item:"เงินบำรุง",fy2566:32755.00,fy2567:33220.00,fy2568:32730.00,fy2569:25685.00},
+ {item:"รับเงินค่ารักษาข้าราชการเบิกจ่ายตรง ผู้ป่วยนอก (เรียกเก็บ)",fy2566:2579776.50,fy2567:2744500.25,fy2568:3028112.25,fy2569:2263241.25},
+ {item:"รับเงินค่ารักษาข้าราชการเบิกจ่ายตรง ผู้ป่วยใน (เรียกเก็บ)",fy2566:848135.12,fy2567:424887.03,fy2568:593461.39,fy2569:461702.65},
+ {item:"รับเงินค่ารักษาพยาบาลประกันสังคมผู้ป่วยใน",fy2566:null,fy2567:null,fy2568:null,fy2569:212440.25},
+ {item:"รับเงินค่ารักษาพยาบาลประกันสังคม (72 ชม./กองทุนทดแทน)",fy2566:18096.40,fy2567:368893.15,fy2568:389476.00,fy2569:179657.00},
+ {item:"รับเงินค่ารักษาพยาบาลประกันสังคม (หลัง 72 ชั่วโมง)",fy2566:null,fy2567:null,fy2568:null,fy2569:1257.00},
+ {item:"รับเงินค่ารักษาพยาบาลประกันสังคม (ทันตกรรม)",fy2566:126216.00,fy2567:152366.00,fy2568:131220.00,fy2569:70103.00},
+ {item:"รับเงินค่ารักษาพยาบาลประกันสังคม (ส่งเสริมสุขภาพ)",fy2566:null,fy2567:null,fy2568:null,fy2569:2760.00},
+ {item:"รับเงินค่ารักษาพยาบาล พรบ.",fy2566:761960.00,fy2567:608807.75,fy2568:536793.00,fy2569:529526.00},
+ {item:"รับเงินประกันสุขภาพต่างด้าว (ขึ้นทะเบียน)",fy2566:3533430.00,fy2567:1535345.00,fy2568:5212665.00,fy2569:1261800.00},
+ {item:"รับเงินค่ารักษาเบิกต้นสังกัด/ตรวจสุขภาพ",fy2566:9406.00,fy2567:23235.00,fy2568:33603.00,fy2569:91832.45},
+ {item:"รับเงินกองทุนประกันสังคม",fy2566:526734.76,fy2567:775196.66,fy2568:1625070.43,fy2569:369366.35},
+ {item:"รับเงินค่ารักษาพยาบาลผู้ป่วยนอก UC นอก CUP ในจังหวัด",fy2566:null,fy2567:null,fy2568:1107.00,fy2569:null},
+ {item:"รับเงินจาก สปสช.",fy2566:110179569.76,fy2567:77719639.56,fy2568:64543165.75,fy2569:67452065.27},
+ {item:"รับเงินจากสสจ.",fy2566:71800.00,fy2567:0,fy2568:0,fy2569:0},
+ {item:"รับเงินจากหน่วยงานอื่น",fy2566:5501697.82,fy2567:2407875.87,fy2568:5564501.47,fy2569:2918005.40},
+ {item:"รายรับจากระบบปฏิบัติการฉุกเฉิน (EMS)",fy2566:null,fy2567:null,fy2568:null,fy2569:270000.00},
+ {item:"รายรับค่ารักษาพยาบาลเบิกจาก อปท.",fy2566:null,fy2567:null,fy2568:null,fy2569:174345.35},
+ {item:"รับเงินค่าห้องพิเศษ",fy2566:null,fy2567:null,fy2568:null,fy2569:352800.00},
+ {item:"รับเงินค่าใบรับรองแพทย์",fy2566:null,fy2567:null,fy2568:null,fy2569:96600.00},
+ {item:"รับชำระหนี้ค้างชำระ",fy2566:null,fy2567:null,fy2568:null,fy2569:185412.00},
+ {item:"รับเงินบุคคลที่มีปัญหาสถานะและสิทธิ",fy2566:null,fy2567:null,fy2568:null,fy2569:130786.32},
+ {item:"รับเงินคืนสมทบ",fy2566:null,fy2567:null,fy2568:null,fy2569:65873.00},
+ {item:"รับเงินค่าสิ่งส่งตรวจ (ตรวจแอลกอฮอล์ในเลือด/..)",fy2566:null,fy2567:null,fy2568:null,fy2569:5000.00}
+],
+expenseDetail:[
+ {item:"ค่าจ้างพนักงานกระทรวง สธ.",fy2566:8159657.00,fy2567:8467317.00,fy2568:8610888.00,fy2569:6860473.00},
+ {item:"ค่าจ้างชั่วคราวรายเดือน",fy2566:2621114.00,fy2567:2686458.00,fy2568:2687873.00,fy2569:2630277.00},
+ {item:"ค่าจ้างรายคาบ/รายวัน",fy2566:1883541.50,fy2567:2027525.00,fy2568:1850685.00,fy2569:718232.50},
+ {item:"เงินสมทบประกันสังคม (ลูกจ้าง)",fy2566:536926.00,fy2567:660429.00,fy2568:481610.00,fy2569:522492.00},
+ {item:"เงินสมทบประกันสังคม (นายจ้าง)",fy2566:569529.00,fy2567:660429.00,fy2568:593840.00,fy2569:522492.00},
+ {item:"เงินสมทบกองทุนเงินทดแทน",fy2566:44203.00,fy2567:13200.00,fy2568:125830.00,fy2569:13500.00},
+ {item:"เงินสมทบจากการรายงานค่าจ้าง",fy2566:634.00,fy2567:994.00,fy2568:226.00,fy2569:null},
+ {item:"เงินสมทบกองทุนสะสม (พนักงานกระทรวง) ในส่วนของนายจ้าง",fy2566:null,fy2567:9980.00,fy2568:10237.20,fy2569:5383.22},
+ {item:"ค่าตอบแทน",fy2566:22644233.50,fy2567:24124212.24,fy2568:21855454.48,fy2569:17438137.50},
+ {item:"ค่าจ้างเหมาบริการอื่น",fy2566:11278723.67,fy2567:10372627.60,fy2568:12158025.55,fy2569:8534857.78},
+ {item:"ค่าครุภัณฑ์",fy2566:6105250.33,fy2567:3784593.80,fy2568:6315088.18,fy2569:4302044.50},
+ {item:"ค่าวัสดุ (รวมค่าเวชภัณฑ์ยา/เวชภัณฑ์มิใช่ยา/วัสดุการแพทย์ทั่วไป ฯ)",fy2566:60316137.51,fy2567:44456509.03,fy2568:36740865.45,fy2569:39438033.86},
+ {item:"เงินโอนสนับสนุนอื่นๆ",fy2566:1640071.00,fy2567:651433.00,fy2568:2207474.00,fy2569:440568.00}
+],
+monthlyServiceRevenue:[
+ {month:"ต.ค.-68",count:29530,revenue:3246293.00},
+ {month:"พ.ย.-68",count:31018,revenue:3211701.00},
+ {month:"ธ.ค.-68",count:36411,revenue:3700772.50},
+ {month:"ม.ค.-69",count:35786,revenue:3133799.00},
+ {month:"ก.พ.-69",count:27768,revenue:3243824.00},
+ {month:"มี.ค.-69",count:27584,revenue:3476208.00},
+ {month:"เม.ย.-69",count:29721,revenue:2872394.75},
+ {month:"พ.ค.-69",count:31775,revenue:3335129.00},
+ {month:"มิ.ย.-69",count:36812,revenue:3524475.00}
+],
+deptServiceRevenue:[
+ {dept:"การเงิน",count:368,revenue:960187.00},
+ {dept:"ผู้ป่วยนอก",count:81974,revenue:352720.00},
+ {dept:"ห้องคลอด",count:1030,revenue:45490.00},
+ {dept:"งานอุบัติเหตุฉุกเฉินและนิติเวช",count:1468,revenue:323600.00},
+ {dept:"ทันตกรรม",count:1889,revenue:570851.50},
+ {dept:"ผู้ป่วยใน",count:3038,revenue:6075.00},
+ {dept:"แพทย์แผนไทย (3,718 ครั้ง / จ่ายยา 7,059 คอร์ส)",count:3718,revenue:124180.00},
+ {dept:"จิตเวชและยาเสพติด",count:2920,revenue:177848.00},
+ {dept:"ปฐมภูมิ",count:10767,revenue:1013325.00},
+ {dept:"กายภาพ",count:3116,revenue:838304.00},
+ {dept:"งานประกัน",count:176112,revenue:25327015.75},
+ {dept:"LAB",count:5,revenue:5000.00}
+],
+medicalFundAnnual:[
+ {item:"กองทุนผู้ป่วยนอก",fy2566:30624343.84,fy2567:32897388.62,fy2568:31732359.12,fy2569:28500489.98},
+ {item:"กองทุนผู้ป่วยใน",fy2566:19679116.25,fy2567:17454725.15,fy2568:11251924.73,fy2569:16580366.23},
+ {item:"กองทุน Central Reimburse",fy2566:1371470.50,fy2567:1423765.81,fy2568:1441140.23,fy2569:1916082.35},
+ {item:"งบค่าบริการทางการแพทย์ที่เบิกจ่ายในลักษณะงบลงทุน (ค่าเสื่อม)",fy2566:2992344.97,fy2567:2297124.78,fy2568:2269474.54,fy2569:3634307.60},
+ {item:"บริการฟื้นฟูสมรรถภาพด้านการแพทย์",fy2566:106699.45,fy2567:968228.46,fy2568:71509.78,fy2569:388514.03},
+ {item:"บริการจ่ายตามเกณฑ์คุณภาพผลงานบริการ",fy2566:57816.00,fy2567:null,fy2568:null,fy2569:null},
+ {item:"งบแพทย์แผนไทย",fy2566:17809.95,fy2567:636284.80,fy2568:77740.95,fy2569:1386324.27},
+ {item:"กองทุนสร้างเสริมสุขภาพและป้องกันโรค",fy2566:8625580.42,fy2567:14305590.27,fy2568:12044772.83,fy2569:10118022.65},
+ {item:"กองทุนเอดส์",fy2566:215331.00,fy2567:150819.00,fy2568:125294.00,fy2569:177608.00},
+ {item:"บริการควบคุมป้องกันและรักษาผู้ป่วยโรคเบาหวานและความดันโลหิตสูง",fy2566:815224.00,fy2567:661425.00,fy2568:197550.00,fy2569:451320.00},
+ {item:"งบค่าใช้จ่ายสำหรับหน่วยบริการในพื้นที่กันดาร เสี่ยงภัย และ 3 จังหวัดชายแดนภาคใต้",fy2566:4724858.54,fy2567:4635496.06,fy2568:4718736.00,fy2569:4779498.00},
+ {item:"ค่าบริการสาธารณสุขเพิ่มเติมสำหรับบริการระดับปฐมภูมิ",fy2566:300.00,fy2567:31350.00,fy2568:61050.00,fy2569:391196.31},
+ {item:"เงินช่วยเหลือเบื้องต้นผู้รับบริการและผู้ให้บริการ",fy2566:570000.00,fy2567:177500.00,fy2568:7500.00,fy2569:null},
+ {item:"สวัสดิการรักษาพยาบาลของพนักงานส่วนท้องถิ่น",fy2566:429152.63,fy2567:241066.00,fy2568:393318.62,fy2569:213980.35},
+ {item:"ค่ารักษาพยาบาลผู้ประกันตนที่เป็นคนพิการ สิทธิประกันสังคม",fy2566:27361.75,fy2567:47389.20,fy2568:13.04,fy2569:7276.60},
+ {item:"พระราชกำหนดกู้เงินฯ",fy2566:39768797.73,fy2567:15237.09,fy2568:null,fy2569:null},
+ {item:"รายการรายได้สูง(ต่ำ)กว่าค่าใช้จ่ายสะสมตามมติบอร์ด",fy2566:null,fy2567:4636.00,fy2568:134247.61,fy2569:195.70},
+ {item:"รายการรายได้สูง(ต่ำ)กว่าค่าใช้จ่ายสะสมตามระเบียบ",fy2566:153362.73,fy2567:1328417.10,fy2568:18464.30,fy2569:null},
+ {item:"งบกลาง เงินสำรอง จ่ายเพื่อกรณีฉุกเฉินหรือจำเป็น",fy2566:null,fy2567:473670.40,fy2568:null,fy2569:null}
+],
+medicalFundAnnualTotals:{2566:110179569.76,2567:77719639.56,2568:64545095.75,2569:68545182.07},
+ssoTransfer:[
+ {no:1,fund:"PROVIDER FINANCIAL RISK PROTECTION",amount:144410.00,deduction:0,delayed:0,remaining:144410.00,pendingOffset:0,transferred:144410.00},
+ {no:2,fund:"กรณีจ่ายตรงหน่วยบริการ",amount:213980.35,deduction:0,delayed:0,remaining:213980.35,pendingOffset:0,transferred:213980.35},
+ {no:3,fund:"กรณีจำเป็นต้องกำกับการใช้บริการอย่างใกล้ชิด",amount:15819.00,deduction:0,delayed:591.00,remaining:15228.00,pendingOffset:591.00,transferred:15228.00},
+ {no:4,fund:"กรณีที่ต้องบริหารแบบเฉพาะโรค",amount:35660.00,deduction:0,delayed:0,remaining:35660.00,pendingOffset:0,transferred:35660.00},
+ {no:5,fund:"กองทุนผู้ป่วยใน CAP",amount:23753533.83,deduction:3594941.11,delayed:3378244.90,remaining:16780347.82,pendingOffset:3299851.43,transferred:16780347.82},
+ {no:6,fund:"ค่าบริการฟื้นฟูสมรรถภาพด้านการแพทย์",amount:388514.03,deduction:0,delayed:0,remaining:388514.03,pendingOffset:0,transferred:388514.03},
+ {no:7,fund:"ค่าบริการสาธารณสุขเพิ่มเติมสำหรับบริการระดับปฐมภูมิ",amount:575192.62,deduction:183996.31,delayed:0,remaining:391196.31,pendingOffset:0,transferred:391196.31},
+ {no:8,fund:"ค่ารักษาพยาบาลผู้ประกันตนที่เป็นคนพิการ สิทธิประกันสังคม",amount:7276.60,deduction:0,delayed:0,remaining:7276.00,pendingOffset:0,transferred:7276.00},
+ {no:9,fund:"งบค่าใช้จ่ายสำหรับหน่วยบริการในพื้นที่กันดาร เสี่ยงภัย และ 3 จังหวัดชายแดนภาคใต้",amount:4779498.00,deduction:0,delayed:0,remaining:4779498.00,pendingOffset:0,transferred:4779498.00},
+ {no:10,fund:"งบค่าบริการดูแลรักษาด้วยยาต้านและบริการที่เกี่ยวข้อง",amount:89370.00,deduction:10945.00,delayed:0,remaining:78425.00,pendingOffset:847.00,transferred:78425.00},
+ {no:11,fund:"งบค่าบริการทางการแพทย์ที่เบิกจ่ายในลักษณะงบลงทุน (ค่าเสื่อม)",amount:3634307.60,deduction:0,delayed:0,remaining:3634307.60,pendingOffset:0,transferred:3634307.60},
+ {no:12,fund:"งบค่าบริการเพิ่มเติม",amount:1387428.27,deduction:1104.00,delayed:0,remaining:1386324.27,pendingOffset:0,transferred:1386324.27},
+ {no:13,fund:"งบบริการป้องกันการติดเชื้อ HIV",amount:99183.00,deduction:0,delayed:0,remaining:99183.00,pendingOffset:0,transferred:99183.00},
+ {no:14,fund:"งบบริการผู้ป่วยนอกจ่ายแบบเหมาจ่ายต่อผู้มีสิทธิ",amount:28910523.98,deduction:0,delayed:410034.00,remaining:28500489.98,pendingOffset:485421.75,transferred:28500489.98},
+ {no:15,fund:"งบประมาณตามมติคณะกรรมการหลักประกันสุขภาพแห่งชาติ",amount:195.70,deduction:0,delayed:0,remaining:195.70,pendingOffset:0,transferred:195.70},
+ {no:16,fund:"บริการกรณีเฉพาะ",amount:1404331.41,deduction:280.00,delayed:450.00,remaining:1403601.41,pendingOffset:0,transferred:1403601.41},
+ {no:17,fund:"บริการควบคุมป้องกันและรักษาผู้ป่วยโรคเบาหวานและความดันโลหิตสูง",amount:501945.00,deduction:50625.00,delayed:0,remaining:451320.00,pendingOffset:0,transferred:451320.00},
+ {no:18,fund:"บริการสร้างเสริมสุขภาพและป้องกันโรคสำหรับบริการพื้นฐาน (P&P BASIC SERVICE)",amount:10191072.65,deduction:58000.00,delayed:15050.00,remaining:10118022.65,pendingOffset:15050.00,transferred:10118022.65},
+ {no:19,fund:"ป้องกันได้รับบริการนอกเครือจ่ายกรณีจำเป็น",amount:329342.94,deduction:0,delayed:12160.00,remaining:317182.94,pendingOffset:12160.00,transferred:317182.94}
+],
+ssoTransferTotals:{amount:76461584.98,deduction:3899891.42,delayed:3816529.90,remaining:68745163.06,pendingOffset:3813921.18,transferred:68745163.06},
+ssoTransferWords:"หกสิบแปดล้านเจ็ดแสนสี่หมื่นห้าพันหนึ่งร้อยหกสิบสามบาทหกสตางค์",
+deptPT:[
+ {item:"กายภาพบำบัด",fy2566:{n:352,amt:26400.00},fy2567:{n:4524,amt:558626.55},fy2568:{n:2355,amt:-91415.08},fy2569:{n:2233,amt:89341.24}},
+ {item:"IMC กายภาพบำบัด",fy2566:{n:49,amt:20700.00},fy2567:{n:189,amt:85050.00},fy2568:{n:194,amt:83250.00},fy2569:{n:355,amt:156150.00}},
+ {item:"ให้บริการนอกหน่วยบริการ/ในชุมชน",fy2566:{n:6,amt:1000.00},fy2567:{n:47,amt:9400.00},fy2568:{n:58,amt:10600.00},fy2569:{n:95,amt:18800.00}},
+ {item:"จิตบำบัด/พฤติกรรมบำบัด",fy2566:{n:64,amt:9600.00},fy2567:{n:2061,amt:18800.00},fy2568:{n:1172,amt:69074.86},fy2569:{n:1667,amt:124222.79}},
+ {item:"กายอุปกรณ์",fy2566:{n:309,amt:207660.00},fy2567:{n:184,amt:64890.00},fy2568:{n:154,amt:102350.00},fy2569:{n:160,amt:50170.00}},
+ {item:"ให้บริการนอกเวลาราชการ",fy2566:{n:null,amt:null},fy2567:{n:null,amt:null},fy2568:{n:557,amt:326592.00},fy2569:{n:426,amt:258664.00}}
+],
+deptPTTotals:{fy2566:{n:780,amt:265360.00},fy2567:{n:7005,amt:736766.55},fy2568:{n:4490,amt:500451.78},fy2569:{n:4936,amt:697348.03}},
+deptOPD:[
+ {item:"ทดสอบการตั้งครรภ์",fy2568:{n:407,amt:30600},fy2569:{n:320,amt:23550}},
+ {item:"บริการผู้ป่วยเบาหวานชนิดที่ 2 และโรคความดันโลหิตสูง",fy2568:{n:2564,amt:184605},fy2569:{n:2845,amt:418980}}
+],
+deptOPDTotals:{fy2568:{n:2971,amt:215205},fy2569:{n:3165,amt:442530}},
+deptIPD:[
+ {item:"บริการคัดกรองการได้ยินในทารกแรกเกิด",fy2568:{n:100,amt:199339.38},fy2569:{n:122,amt:22031.29}},
+ {item:"Homeward",fy2568:{n:430,amt:1355666.87},fy2569:{n:57,amt:99086.06}}
+],
+deptIPDTotals:{fy2568:{n:530,amt:1555006.25},fy2569:{n:179,amt:121117.35}}
+};
+</script>
+<script>
+/* =========================================================================
+   APP LOGIC
+   ========================================================================= */
+const STORAGE_KEY='thk_dashboard_data_v1';
+const SETTINGS_KEY='thk_dashboard_settings_v1';
+const LOG_KEY='thk_dashboard_log_v1';
+let DATA=null, SETTINGS=null, LOGS=null;
+let charts={};
+let plMode='monthly', plFY=null, fundFY=null;
+
+function deepClone(o){return JSON.parse(JSON.stringify(o));}
+function loadState(){
+  try{ DATA = JSON.parse(localStorage.getItem(STORAGE_KEY)) || deepClone(SEED_DATA); }catch(e){ DATA = deepClone(SEED_DATA); }
+  try{ SETTINGS = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {title:SEED_DATA.meta.title, subtitle:SEED_DATA.meta.subtitle, captions:{}}; }catch(e){ SETTINGS={title:SEED_DATA.meta.title, subtitle:SEED_DATA.meta.subtitle, captions:{}}; }
+  if(!SETTINGS.captions) SETTINGS.captions = {};
+  try{ LOGS = JSON.parse(localStorage.getItem(LOG_KEY)) || []; }catch(e){ LOGS=[]; }
+}
+function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }
+function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); }
+function saveLogs(){ localStorage.setItem(LOG_KEY, JSON.stringify(LOGS)); }
+function addLog(msg){
+  LOGS.unshift({t:new Date().toLocaleString('th-TH'), msg:msg});
+  if(LOGS.length>200) LOGS.length=200;
+  saveLogs();
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function fmtMoney(v){
+  if(v===null||v===undefined||isNaN(v)) return '-';
+  return Number(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtCompact(v){
+  if(v===null||v===undefined||isNaN(v)) return '-';
+  const n = Number(v);
+  if(Math.abs(n)>=1000000) return (n/1000000).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' ล้านบาท';
+  return fmtMoney(n)+' บาท';
+}
+function fmtInt(v){
+  if(v===null||v===undefined||isNaN(v)) return '-';
+  return Number(v).toLocaleString('th-TH');
+}
+function signClass(v){ return (v<0)?'neg':'pos'; }
+
+/* ---------- Top-level Tabs ---------- */
+document.querySelectorAll('#navTabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#navTabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.section-block').forEach(s=>s.style.display='none');
+    document.getElementById(btn.dataset.tab).style.display='block';
+  });
+});
+document.querySelectorAll('#adminMainTabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#adminMainTabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('[id^="atab-"]').forEach(p=>p.classList.add('hidden'));
+    document.getElementById('atab-'+btn.dataset.atab).classList.remove('hidden');
+  });
+});
+
+/* ---------- Admin Login ---------- */
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = '1234';
+function isAdminLoggedIn(){ return sessionStorage.getItem('isAdminLoggedIn')==='1'; }
+function showAdminSection(){
+  document.querySelectorAll('#navTabs button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section-block').forEach(s=>s.style.display='none');
+  document.getElementById('secAdmin').style.display='block';
+}
+function openLoginModal(){
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('loginForm').reset();
+  document.getElementById('loginOverlay').classList.add('show');
+  document.getElementById('loginUser').focus();
+}
+function closeLoginModal(){
+  document.getElementById('loginOverlay').classList.remove('show');
+}
+document.getElementById('adminEntryBtn').addEventListener('click',()=>{
+  if(isAdminLoggedIn()){ showAdminSection(); }
+  else{ openLoginModal(); }
+});
+document.getElementById('loginCancelBtn').addEventListener('click', closeLoginModal);
+document.getElementById('loginOverlay').addEventListener('click',(e)=>{
+  if(e.target.id==='loginOverlay') closeLoginModal();
+});
+document.getElementById('loginForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(u===ADMIN_USER && p===ADMIN_PASS){
+    sessionStorage.setItem('isAdminLoggedIn','1');
+    closeLoginModal();
+    showAdminSection();
+    showToast('✅ เข้าสู่ระบบสำเร็จ');
+  } else {
+    document.getElementById('loginError').classList.add('show');
+  }
+});
+document.getElementById('adminLogoutBtn').addEventListener('click',()=>{
+  sessionStorage.removeItem('isAdminLoggedIn');
+  document.getElementById('secAdmin').style.display='none';
+  document.querySelectorAll('#navTabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec1').style.display='block';
+  document.querySelector('#navTabs button[data-tab="sec1"]').classList.add('active');
+  showToast('🚪 ออกจากระบบแล้ว');
+});
+
+/* ======================= SECTION 1 : P&L ======================= */
+function getFYList(){ return [...new Set(DATA.monthlyPL.map(r=>r.fy))].sort(); }
+
+function renderFYFilters(){
+  const fys = getFYList();
+  const opts = fys.map(fy=>`<option value="${fy}">ปีงบประมาณ ${fy}</option>`).join('');
+  document.getElementById('fyFilter1').innerHTML = opts;
+  if(!plFY || !fys.includes(+plFY)) plFY = fys[fys.length-1];
+  document.getElementById('fyFilter1').value = plFY;
+  if(!fundFY || !fys.includes(+fundFY)) fundFY = fys[fys.length-1];
+
+  const plTabs = document.getElementById('plFyTabs');
+  plTabs.innerHTML = fys.map(fy=>`<button class="fy-tab-btn ${fy==plFY?'active':''}" data-fy="${fy}">ปีงบ ${fy}</button>`).join('');
+  plTabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ plFY=b.dataset.fy; document.getElementById('fyFilter1').value=plFY; renderKPI1(); renderPLChart(); renderPLTable(); }));
+
+  const fundTabs = document.getElementById('fundFyTabs');
+  fundTabs.innerHTML = fys.map(fy=>`<button class="fy-tab-btn ${fy==fundFY?'active':''}" data-fy="${fy}">ปีงบ ${fy}</button>`).join('');
+  fundTabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ fundFY=b.dataset.fy; renderFundTypeTable(); }));
+}
+
+function currentFYRows(fy){ return DATA.monthlyPL.filter(r=>r.fy==fy); }
+
+function renderKPI1(){
+  const fy = plFY;
+  const rows = currentFYRows(fy);
+  const rev = rows.reduce((a,r)=>a+(r.rev||0),0);
+  const exp = rows.reduce((a,r)=>a+(r.exp||0),0);
+  const profit = rev-exp;
+  const monthsCovered = rows.length;
+  document.getElementById('kpi1').innerHTML = `
+    <div class="card kpi-card revenue"><div class="kpi-badge">💰</div><div class="label">รายรับรวม ปีงบ ${fy}</div><div class="value">${fmtCompact(rev)}</div><div class="sub">${monthsCovered} เดือนที่มีข้อมูล · ${fmtMoney(rev)} บาท</div></div>
+    <div class="card kpi-card expense"><div class="kpi-badge">💸</div><div class="label">รายจ่ายรวม ปีงบ ${fy}</div><div class="value">${fmtCompact(exp)}</div><div class="sub">${fmtMoney(exp)} บาท</div></div>
+    <div class="card kpi-card profit"><div class="kpi-badge">📈</div><div class="label">กำไร(ขาดทุน)สุทธิ</div><div class="value ${signClass(profit)}">${fmtCompact(profit)}</div><div class="sub">${profit<0?'⚠️ ขาดทุน':'✅ กำไร'} · ${fmtMoney(profit)} บาท</div></div>
+  `;
+}
+
+function renderPLChart(){
+  const fy = plFY;
+  const ctx = document.getElementById('chartPL').getContext('2d');
+  if(charts.pl) charts.pl.destroy();
+  let labels, revData, expData, profitData;
+  if(plMode==='monthly'){
+    const rows = currentFYRows(fy);
+    labels = rows.map(r=>r.month);
+    revData = rows.map(r=>r.rev);
+    expData = rows.map(r=>r.exp);
+    profitData = rows.map(r=>r.rev-r.exp);
+  } else {
+    const fys = getFYList();
+    labels = fys.map(f=>'ปีงบ '+f);
+    revData = fys.map(f=>{const t=DATA.plAnnualTotalsFromMonthlyTable[f]; return t?t.rev:currentFYRows(f).reduce((a,r)=>a+r.rev,0);});
+    expData = fys.map(f=>{const t=DATA.plAnnualTotalsFromMonthlyTable[f]; return t?t.exp:currentFYRows(f).reduce((a,r)=>a+r.exp,0);});
+    profitData = fys.map((f,i)=>revData[i]-expData[i]);
+  }
+  charts.pl = new Chart(ctx,{
+    data:{labels, datasets:[
+      {type:'bar',label:'รายรับ',data:revData,backgroundColor:'rgba(22,163,74,.75)',order:2,borderRadius:4},
+      {type:'bar',label:'รายจ่าย',data:expData,backgroundColor:'rgba(220,38,38,.65)',order:2,borderRadius:4},
+      {type:'line',label:'กำไร(ขาดทุน)',data:profitData,borderColor:'#d97706',backgroundColor:'#d97706',tension:.25,order:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'Sarabun'}}}},
+      scales:{y:{ticks:{callback:v=>Number(v).toLocaleString('th-TH'),font:{family:'Sarabun'}}},x:{ticks:{font:{family:'Sarabun'}}}}
+    }
+  });
+}
+
+function renderPLTable(){
+  const fy = plFY;
+  const rows = currentFYRows(fy);
+  const rev = rows.reduce((a,r)=>a+(r.rev||0),0);
+  const exp = rows.reduce((a,r)=>a+(r.exp||0),0);
+  let html = `<thead><tr><th>เดือน</th><th>รายรับ</th><th>รายจ่าย</th><th>กำไร(ขาดทุน)</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const p = r.rev-r.exp;
+    html += `<tr><td>${r.month}</td><td>${fmtMoney(r.rev)}</td><td>${fmtMoney(r.exp)}</td><td class="${signClass(p)}">${fmtMoney(p)}</td></tr>`;
+  });
+  html += `<tr class="total-row"><td>รวม (ปีงบ ${fy})</td><td>${fmtMoney(rev)}</td><td>${fmtMoney(exp)}</td><td class="${signClass(rev-exp)}">${fmtMoney(rev-exp)}</td></tr>`;
+  html += '</tbody>';
+  document.getElementById('tblPLMonthly').innerHTML = html;
+}
+
+function renderRevenueExpenseDetail(){
+  const fys = getFYList();
+  let h = '<thead><tr><th>รายการรายรับ</th>'+fys.map(f=>`<th>ปีงบ ${f}</th>`).join('')+'</tr></thead><tbody>';
+  DATA.revenueDetail.forEach(r=>{
+    h += `<tr><td>${r.item}</td>`+fys.map(f=>`<td>${fmtMoney(r['fy'+f])}</td>`).join('')+'</tr>';
+  });
+  h += '<tr class="total-row"><td>รวมรายรับ</td>'+fys.map(f=>`<td>${fmtMoney(DATA.revenueAnnualTotalsFromDetailTable[f])}</td>`).join('')+'</tr>';
+  h += '</tbody>';
+  document.getElementById('tblRevenueDetail').innerHTML = h;
+
+  let h2 = '<thead><tr><th>รายการรายจ่าย</th>'+fys.map(f=>`<th>ปีงบ ${f}</th>`).join('')+'</tr></thead><tbody>';
+  DATA.expenseDetail.forEach(r=>{
+    h2 += `<tr><td>${r.item}</td>`+fys.map(f=>`<td>${fmtMoney(r['fy'+f])}</td>`).join('')+'</tr>';
+  });
+  h2 += '<tr class="total-row"><td>รวมรายจ่าย</td>'+fys.map(f=>`<td>${fmtMoney(DATA.expenseAnnualTotalsFromDetailTable[f])}</td>`).join('')+'</tr>';
+  h2 += '</tbody>';
+  document.getElementById('tblExpenseDetail').innerHTML = h2;
+
+  let h3 = '<thead><tr><th>ค่าไฟฟ้า รพ.</th>'+fys.map(f=>`<th>ปีงบ ${f}</th>`).join('')+'</tr></thead><tbody><tr><td>จำนวนเงิน</td>'+
+    fys.map(f=>{const e=DATA.electricity.find(x=>x.fy==f); return `<td>${e?fmtMoney(e.amount):'-'}</td>`;}).join('')+'</tr></tbody>';
+  document.getElementById('tblElectricity').innerHTML = h3;
+}
+
+document.getElementById('fyFilter1').addEventListener('change',(e)=>{
+  plFY = e.target.value;
+  document.querySelectorAll('#plFyTabs .fy-tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.fy==plFY));
+  renderKPI1();renderPLChart();renderPLTable();
+});
+document.getElementById('viewModeToggle1').addEventListener('click',(e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#viewModeToggle1 button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  plMode = btn.dataset.mode;
+  renderPLChart();
+});
+
+/* ======================= SECTION 2 : Service & Revenue ======================= */
+function renderKPI2(){
+  const totalCount = DATA.monthlyServiceRevenue.reduce((a,r)=>a+r.count,0);
+  const totalRev = DATA.monthlyServiceRevenue.reduce((a,r)=>a+r.revenue,0);
+  document.getElementById('kpi2').innerHTML = `
+   <div class="mini-kpi"><div class="l">จำนวนครั้งบริการรวม (ต.ค.68–มิ.ย.69)</div><div class="v">${fmtInt(totalCount)}</div></div>
+   <div class="mini-kpi"><div class="l">รายได้รวม (ต.ค.68–มิ.ย.69)</div><div class="v">${fmtCompact(totalRev)}</div></div>
+   <div class="mini-kpi"><div class="l">รายได้เฉลี่ย/เดือน</div><div class="v">${fmtCompact(totalRev/DATA.monthlyServiceRevenue.length)}</div></div>
+  `;
+}
+function renderServiceCharts(){
+  const m = DATA.monthlyServiceRevenue;
+  if(charts.svcM) charts.svcM.destroy();
+  charts.svcM = new Chart(document.getElementById('chartServiceMonthly').getContext('2d'),{
+    data:{labels:m.map(r=>r.month),datasets:[
+      {type:'bar',label:'รายได้ (บาท)',data:m.map(r=>r.revenue),backgroundColor:'rgba(15,118,110,.75)',yAxisID:'y',borderRadius:4},
+      {type:'line',label:'จำนวนครั้ง',data:m.map(r=>r.count),borderColor:'#d97706',backgroundColor:'#d97706',yAxisID:'y1',tension:.25}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'Sarabun'}}}},
+      scales:{y:{position:'left',ticks:{callback:v=>Number(v).toLocaleString('th-TH'),font:{family:'Sarabun'}}},
+              y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>Number(v).toLocaleString('th-TH'),font:{family:'Sarabun'}}},
+              x:{ticks:{font:{family:'Sarabun'}}}}}
+  });
+  const d = DATA.deptServiceRevenue.slice().sort((a,b)=>b.revenue-a.revenue);
+  if(charts.svcD) charts.svcD.destroy();
+  charts.svcD = new Chart(document.getElementById('chartServiceDept').getContext('2d'),{
+    type:'bar',
+    data:{labels:d.map(r=>r.dept),datasets:[{label:'รายได้ (บาท)',data:d.map(r=>r.revenue),backgroundColor:'rgba(37,99,235,.75)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{callback:v=>Number(v).toLocaleString('th-TH'),font:{family:'Sarabun'}}},y:{ticks:{font:{family:'Sarabun',size:10.5}}}}}
+  });
+}
+function renderServiceTables(){
+  let h = '<thead><tr><th>เดือน</th><th>จำนวนครั้ง</th><th>รายได้</th></tr></thead><tbody>';
+  DATA.monthlyServiceRevenue.forEach(r=>{ h+=`<tr><td>${r.month}</td><td>${fmtInt(r.count)}</td><td>${fmtMoney(r.revenue)}</td></tr>`; });
+  const tc = DATA.monthlyServiceRevenue.reduce((a,r)=>a+r.count,0), tr = DATA.monthlyServiceRevenue.reduce((a,r)=>a+r.revenue,0);
+  h += `<tr class="total-row"><td>รวม</td><td>${fmtInt(tc)}</td><td>${fmtMoney(tr)}</td></tr></tbody>`;
+  document.getElementById('tblServiceMonthly').innerHTML = h;
+
+  let h2 = '<thead><tr><th>หน่วยงาน</th><th>จำนวน</th><th>รายได้</th></tr></thead><tbody>';
+  DATA.deptServiceRevenue.forEach(r=>{ h2+=`<tr><td>${r.dept}</td><td>${fmtInt(r.count)}</td><td>${fmtMoney(r.revenue)}</td></tr>`; });
+  const tc2 = DATA.deptServiceRevenue.reduce((a,r)=>a+r.count,0), tr2 = DATA.deptServiceRevenue.reduce((a,r)=>a+r.revenue,0);
+  h2 += `<tr class="total-row"><td>รวม</td><td>${fmtInt(tc2)}</td><td>${fmtMoney(tr2)}</td></tr></tbody>`;
+  document.getElementById('tblServiceDept').innerHTML = h2;
+}
+function renderFundTypeTable(){
+  const fy = fundFY;
+  let h = '<thead><tr><th>กองทุนค่าบริการทางการแพทย์</th><th>จำนวนเงิน ปีงบ '+fy+'</th></tr></thead><tbody>';
+  DATA.medicalFundAnnual.forEach(r=>{ h += `<tr><td>${r.item}</td><td>${fmtMoney(r['fy'+fy])}</td></tr>`; });
+  h += `<tr class="total-row"><td>รวม</td><td>${fmtMoney(DATA.medicalFundAnnualTotals[fy])}</td></tr></tbody>`;
+  document.getElementById('tblFundType').innerHTML = h;
+}
+function renderDeptCompTables(){
+  const fys4 = [2566,2567,2568,2569];
+  let h = '<thead><tr><th>รายการเบิก</th>'+fys4.map(f=>`<th colspan="2">ปีงบ ${f}</th>`).join('')+'</tr><tr><th></th>'+fys4.map(()=>'<th>คน/ครั้ง</th><th>เงินชดเชย</th>').join('')+'</tr></thead><tbody>';
+  DATA.deptPT.forEach(r=>{
+    h += '<tr><td>'+r.item+'</td>'+fys4.map(f=>{const c=r['fy'+f]; return `<td>${fmtInt(c.n)}</td><td>${fmtMoney(c.amt)}</td>`;}).join('')+'</tr>';
+  });
+  h += '<tr class="total-row"><td>รวม</td>'+fys4.map(f=>{const t=DATA.deptPTTotals['fy'+f]; return `<td>${fmtInt(t.n)}</td><td>${fmtMoney(t.amt)}</td>`;}).join('')+'</tr></tbody>';
+  document.getElementById('tblDeptPT').innerHTML = h;
+
+  function twoYearTable(rows,totals,elId){
+    const fys2=[2568,2569];
+    let hh = '<thead><tr><th>รายการเบิก</th>'+fys2.map(f=>`<th colspan="2">ปีงบ ${f}</th>`).join('')+'</tr><tr><th></th>'+fys2.map(()=>'<th>จำนวนราย</th><th>ชดเชย</th>').join('')+'</tr></thead><tbody>';
+    rows.forEach(r=>{ hh += '<tr><td>'+r.item+'</td>'+fys2.map(f=>{const c=r['fy'+f]; return `<td>${fmtInt(c.n)}</td><td>${fmtMoney(c.amt)}</td>`;}).join('')+'</tr>'; });
+    hh += '<tr class="total-row"><td>รวม</td>'+fys2.map(f=>{const t=totals['fy'+f]; return `<td>${fmtInt(t.n)}</td><td>${fmtMoney(t.amt)}</td>`;}).join('')+'</tr></tbody>';
+    document.getElementById(elId).innerHTML = hh;
+  }
+  twoYearTable(DATA.deptOPD, DATA.deptOPDTotals, 'tblDeptOPD');
+  twoYearTable(DATA.deptIPD, DATA.deptIPDTotals, 'tblDeptIPD');
+}
+
+/* ======================= SECTION 3 : SSO Transfer ======================= */
+function renderKPI3(){
+  const t = DATA.ssoTransferTotals;
+  document.getElementById('kpi3').innerHTML = `
+   <div class="card kpi-card"><div class="kpi-badge">🏦</div><div class="label">จำนวนเงินตั้งต้น</div><div class="value">${fmtCompact(t.amount)}</div><div class="sub">${fmtMoney(t.amount)} บาท</div></div>
+   <div class="card kpi-card expense"><div class="kpi-badge">➖</div><div class="label">รายการหักจากยอดโอนเงิน</div><div class="value">${fmtCompact(t.deduction)}</div><div class="sub">${fmtMoney(t.deduction)} บาท</div></div>
+   <div class="card kpi-card expense"><div class="kpi-badge">⏸️</div><div class="label">ชะลอการโอน</div><div class="value">${fmtCompact(t.delayed)}</div><div class="sub">${fmtMoney(t.delayed)} บาท</div></div>
+   <div class="card kpi-card revenue"><div class="kpi-badge">✅</div><div class="label">เงินโอนเข้าบัญชี (สุทธิ)</div><div class="value">${fmtCompact(t.transferred)}</div><div class="sub">${fmtMoney(t.transferred)} บาท</div></div>
+  `;
+}
+function renderSSOChart(){
+  const top = DATA.ssoTransfer.slice().sort((a,b)=>b.transferred-a.transferred).slice(0,10);
+  if(charts.sso) charts.sso.destroy();
+  const palette=['#0f766e','#16a34a','#2563eb','#0891b2','#65a30d','#7c3aed','#d97706','#db2777','#dc2626','#475569'];
+  charts.sso = new Chart(document.getElementById('chartSSO').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:top.map(r=>r.fund),datasets:[{data:top.map(r=>r.transferred),backgroundColor:palette}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10,family:'Sarabun'}}}}}
+  });
+}
+function renderSSOTable(){
+  let h = '<thead><tr><th>#</th><th>กองทุนย่อยเฉพาะด้าน</th><th>จำนวนเงิน</th><th>รายการหักจากยอดโอนเงิน</th><th>ชะลอการโอน</th><th>คงเหลือ</th><th>จำนวนเงินรอหักลบ</th><th>เงินโอนเข้าบัญชี</th></tr></thead><tbody>';
+  DATA.ssoTransfer.forEach(r=>{
+    h += `<tr><td>${r.no}</td><td>${r.fund}</td><td>${fmtMoney(r.amount)}</td><td>${fmtMoney(r.deduction)}</td><td>${fmtMoney(r.delayed)}</td><td>${fmtMoney(r.remaining)}</td><td>${fmtMoney(r.pendingOffset)}</td><td>${fmtMoney(r.transferred)}</td></tr>`;
+  });
+  const t = DATA.ssoTransferTotals;
+  h += `<tr class="total-row"><td colspan="2">รวม</td><td>${fmtMoney(t.amount)}</td><td>${fmtMoney(t.deduction)}</td><td>${fmtMoney(t.delayed)}</td><td>${fmtMoney(t.remaining)}</td><td>${fmtMoney(t.pendingOffset)}</td><td>${fmtMoney(t.transferred)}</td></tr></tbody>`;
+  document.getElementById('tblSSO').innerHTML = h;
+  document.getElementById('ssoWordsNote').innerHTML = `ยอดเงินโอนเข้าบัญชีสุทธิ (ตัวหนังสือตามเอกสารต้นฉบับ): <strong>${DATA.ssoTransferWords}</strong> (${fmtMoney(t.transferred)} บาท)`;
+}
+
+/* ======================= RENDER ALL ======================= */
+function renderAll(){
+  document.getElementById('dashTitle').textContent = SETTINGS.title;
+  document.getElementById('dashSubtitle').textContent = SETTINGS.subtitle;
+  document.getElementById('lastUpdatedBadge').textContent = 'อัปเดตล่าสุด: '+new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  renderFYFilters();
+  renderKPI1(); renderPLChart(); renderPLTable(); renderRevenueExpenseDetail();
+  renderKPI2(); renderServiceCharts(); renderServiceTables(); renderFundTypeTable(); renderDeptCompTables();
+  renderKPI3(); renderSSOChart(); renderSSOTable();
+  renderAdminTableSelect(); renderAdminGridTabs(); renderAdminGrid();
+  renderLog();
+  document.getElementById('settingTitle').value = SETTINGS.title;
+  document.getElementById('settingSubtitle').value = SETTINGS.subtitle;
+  applyCaptions();
+  renderCaptionFields();
+}
+
+/* ======================= CAPTION SETTINGS ======================= */
+const CAPTION_GROUPS = [
+  {section:'ส่วนที่ 1: รายรับ-รายจ่าย', items:[
+    {id:'cap_sec1_intro', label:'คำอธิบายหัวข้อ'},
+    {id:'cap_sec1_chart', label:'แหล่งข้อมูลกราฟแนวโน้ม'},
+    {id:'cap_sec1_tablenote', label:'หมายเหตุตารางรายเดือน'},
+    {id:'cap_sec1_revenue', label:'แหล่งข้อมูลรายละเอียดรายรับ'},
+    {id:'cap_sec1_expense', label:'แหล่งข้อมูลรายละเอียดรายจ่าย'},
+    {id:'cap_sec1_gapnote', label:'หมายเหตุความคลาดเคลื่อนเล็กน้อยระหว่างตาราง (เนื้อหา)', long:true}
+  ]},
+  {section:'ส่วนที่ 2: บริการและรายได้', items:[
+    {id:'cap_sec2_intro', label:'คำอธิบายหัวข้อ'},
+    {id:'cap_sec2_chartmonthly', label:'คำอธิบายกราฟรายเดือน'},
+    {id:'cap_sec2_chartdept', label:'คำอธิบายกราฟรายฝ่าย'},
+    {id:'cap_sec2_fund', label:'แหล่งข้อมูลกองทุนค่าบริการทางการแพทย์'},
+    {id:'cap_sec2_deptfund', label:'แหล่งข้อมูลแหล่งหารายได้เพิ่มแยกรายฝ่าย'}
+  ]},
+  {section:'ส่วนที่ 3: โอนเงิน สปสช.', items:[
+    {id:'cap_sec3_intro', label:'คำอธิบายหัวข้อ'},
+    {id:'cap_sec3_chart', label:'คำอธิบายกราฟ'},
+    {id:'cap_sec3_table', label:'คำอธิบายตาราง'}
+  ]},
+  {section:'ท้ายเว็บไซต์ (Footer)', items:[
+    {id:'cap_footer', label:'ข้อความท้ายเว็บไซต์', long:true}
+  ]}
+];
+const CAPTION_DEFAULTS = {};
+CAPTION_GROUPS.forEach(g=>g.items.forEach(it=>{
+  const el = document.getElementById(it.id);
+  if(el) CAPTION_DEFAULTS[it.id] = el.textContent;
+}));
+function applyCaptions(){
+  CAPTION_GROUPS.forEach(g=>g.items.forEach(it=>{
+    const el = document.getElementById(it.id);
+    if(el) el.textContent = (SETTINGS.captions && SETTINGS.captions[it.id]) || CAPTION_DEFAULTS[it.id] || '';
+  }));
+}
+function escAttr(s){ return String(s==null?'':s).replace(/"/g,'&quot;'); }
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderCaptionFields(){
+  const wrap = document.getElementById('captionFieldsWrap');
+  if(!wrap) return;
+  let h='';
+  CAPTION_GROUPS.forEach(g=>{
+    h += `<div style="margin-bottom:16px;"><div style="font-size:12.5px;font-weight:700;color:var(--primary-dark);margin-bottom:8px;">${g.section}</div>`;
+    g.items.forEach(it=>{
+      const val = (SETTINGS.captions && SETTINGS.captions[it.id]) || CAPTION_DEFAULTS[it.id] || '';
+      if(it.long){
+        h += `<div class="ts-field" style="max-width:100%;"><label>${it.label}</label><textarea data-cap-id="${it.id}" rows="3" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;background:#fff;box-sizing:border-box;resize:vertical;">${escHtml(val)}</textarea></div>`;
+      } else {
+        h += `<div class="ts-field"><label>${it.label}</label><input type="text" data-cap-id="${it.id}" value="${escAttr(val)}"></div>`;
+      }
+    });
+    h += '</div>';
+  });
+  wrap.innerHTML = h;
+}
+
+/* ======================= ADMIN ======================= */
+const TABLE_DEFS = {
+  monthlyPL:{label:'1. รายรับ-รายจ่ายรายเดือน', cols:[['fy','ปีงบ','num'],['month','เดือน','txt'],['rev','รายรับ','num'],['exp','รายจ่าย','num']]},
+  monthlyServiceRevenue:{label:'2. บริการและรายได้ รายเดือน', cols:[['month','เดือน','txt'],['count','จำนวนครั้ง','num'],['revenue','รายได้','num']]},
+  deptServiceRevenue:{label:'2. บริการและรายได้ รายฝ่าย', cols:[['dept','หน่วยงาน','txt'],['count','จำนวน','num'],['revenue','รายได้','num']]},
+  ssoTransfer:{label:'3. การโอนเงิน สปสช.', cols:[['no','ลำดับ','num'],['fund','กองทุนย่อยเฉพาะด้าน','txt'],['amount','จำนวนเงิน','num'],['deduction','รายการหัก','num'],['delayed','ชะลอการโอน','num'],['remaining','คงเหลือ','num'],['pendingOffset','รอหักลบ','num'],['transferred','โอนเข้าบัญชี','num']]},
+  revenueDetail:{label:'รายละเอียดรายรับรายปี', cols:[['item','รายการ','txt'],['fy2566','ปีงบ2566','num'],['fy2567','ปีงบ2567','num'],['fy2568','ปีงบ2568','num'],['fy2569','ปีงบ2569','num']]},
+  expenseDetail:{label:'รายละเอียดรายจ่ายรายปี', cols:[['item','รายการ','txt'],['fy2566','ปีงบ2566','num'],['fy2567','ปีงบ2567','num'],['fy2568','ปีงบ2568','num'],['fy2569','ปีงบ2569','num']]},
+  medicalFundAnnual:{label:'กองทุน สปสช. รายปี', cols:[['item','รายการกองทุน','txt'],['fy2566','ปีงบ2566','num'],['fy2567','ปีงบ2567','num'],['fy2568','ปีงบ2568','num'],['fy2569','ปีงบ2569','num']]}
+};
+let adminCurrentTable = Object.keys(TABLE_DEFS)[0];
+
+function renderAdminTableSelect(){
+  const opts = Object.keys(TABLE_DEFS).map(k=>`<option value="${k}">${TABLE_DEFS[k].label}</option>`).join('');
+  document.getElementById('importTableSelect').innerHTML = opts;
+}
+function renderAdminGridTabs(){
+  const wrap = document.getElementById('gridTableTabs');
+  wrap.innerHTML = Object.keys(TABLE_DEFS).map(k=>`<button data-table="${k}" class="${k===adminCurrentTable?'active':''}">${TABLE_DEFS[k].label}</button>`).join('');
+  wrap.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    adminCurrentTable = b.dataset.table;
+    wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    renderAdminGrid();
+  }));
+}
+function renderAdminGrid(){
+  const key = adminCurrentTable;
+  const def = TABLE_DEFS[key];
+  const rows = DATA[key];
+  document.getElementById('gridRowCount').textContent = rows.length+' แถว';
+  let h = '<thead><tr>'+def.cols.map(c=>`<th>${c[1]}</th>`).join('')+'<th>ลบ</th></tr></thead><tbody>';
+  rows.forEach((r,i)=>{
+    h += '<tr>'+def.cols.map(c=>{
+      const val = r[c[0]]==null?'':r[c[0]];
+      const cls = c[2]==='txt'?'txt':'';
+      return `<td><input class="${cls}" data-row="${i}" data-col="${c[0]}" data-type="${c[2]}" value="${String(val).replace(/"/g,'&quot;')}"></td>`;
+    }).join('') + `<td><button class="btn btn-danger btn-sm" onclick="deleteAdminRow(${i})">×</button></td></tr>`;
+  });
+  h += '</tbody>';
+  document.getElementById('adminGrid').innerHTML = h;
+}
+function deleteAdminRow(i){
+  DATA[adminCurrentTable].splice(i,1);
+  renderAdminGrid();
+}
+document.getElementById('addRowBtn').addEventListener('click',()=>{
+  const def = TABLE_DEFS[adminCurrentTable];
+  const blank = {}; def.cols.forEach(c=>blank[c[0]] = c[2]==='num'?0:'');
+  DATA[adminCurrentTable].push(blank);
+  renderAdminGrid();
+});
+document.getElementById('saveGridBtn').addEventListener('click',()=>{
+  const key = adminCurrentTable;
+  const inputs = document.querySelectorAll('#adminGrid input');
+  inputs.forEach(inp=>{
+    const row = +inp.dataset.row, col = inp.dataset.col, type = inp.dataset.type;
+    let v = inp.value;
+    if(type==='num'){ v = v===''?null:Number(v); }
+    DATA[key][row][col] = v;
+  });
+  saveData();
+  addLog('แก้ไขตาราง: '+TABLE_DEFS[key].label);
+  renderAll();
+  showToast('✅ บันทึกข้อมูลเรียบร้อย');
+});
+document.getElementById('resetTableBtn').addEventListener('click',()=>{
+  const key = adminCurrentTable;
+  if(!confirm('คืนค่าตาราง "'+TABLE_DEFS[key].label+'" กลับเป็นข้อมูลต้นฉบับจากเอกสารประชุม?')) return;
+  DATA[key] = deepClone(SEED_DATA[key]);
+  saveData();
+  addLog('คืนค่าตาราง: '+TABLE_DEFS[key].label+' เป็นข้อมูลต้นฉบับ');
+  renderAll();
+  showToast('↺ คืนค่าตารางเป็นต้นฉบับแล้ว');
+});
+document.getElementById('resetAllBtn').addEventListener('click',()=>{
+  if(!confirm('ยืนยันรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าตั้งต้นจากเอกสารประชุม? การแก้ไขทั้งหมดจะหายไป')) return;
+  DATA = deepClone(SEED_DATA);
+  saveData();
+  addLog('รีเซ็ตข้อมูลทั้งหมดเป็นค่าตั้งต้น');
+  renderAll();
+  showToast('↺ รีเซ็ตข้อมูลทั้งหมดแล้ว');
+});
+
+/* ---- Import (with drag & drop) ---- */
+let importedRows = null;
+function handleImportFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const wb = XLSX.read(e.target.result,{type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet,{defval:null});
+    importedRows = json;
+    if(!json.length){ document.getElementById('importPreview').innerHTML = '<div class="note danger">ไม่พบข้อมูลในไฟล์ที่เลือก</div>'; return; }
+    let prev = '<div class="table-scroll" style="margin:14px 0;max-height:320px;"><table class="grid"><thead><tr>'+
+      Object.keys(json[0]||{}).map(k=>`<th>${k}</th>`).join('')+'</tr></thead><tbody>'+
+      json.slice(0,10).map(r=>'<tr>'+Object.values(r).map(v=>`<td>${v==null?'':v}</td>`).join('')+'</tr>').join('')+
+      '</tbody></table></div><div class="cap2">พรีวิว 10 แถวแรก จากทั้งหมด '+json.length+' แถว</div>';
+    document.getElementById('importPreview').innerHTML = prev;
+    document.getElementById('importActions').style.display='flex';
+  };
+  reader.readAsArrayBuffer(file);
+}
+document.getElementById('importFile').addEventListener('change',(e)=>handleImportFile(e.target.files[0]));
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e=>{
+  e.preventDefault(); uploadZone.classList.remove('drag');
+  if(e.dataTransfer.files.length) handleImportFile(e.dataTransfer.files[0]);
+});
+function mapImportedToTable(key){
+  const def = TABLE_DEFS[key];
+  return importedRows.map(r=>{
+    const obj={};
+    def.cols.forEach(c=>{
+      let v = r[c[1]]!==undefined? r[c[1]] : r[c[0]];
+      if(c[2]==='num' && v!=null && v!=='') v = Number(v);
+      if(v==='') v = null;
+      obj[c[0]] = v===undefined?null:v;
+    });
+    return obj;
+  });
+}
+document.getElementById('importAppendBtn').addEventListener('click',()=>{
+  const key = document.getElementById('importTableSelect').value;
+  if(!importedRows){ showToast('กรุณาเลือกไฟล์ก่อน'); return; }
+  const mapped = mapImportedToTable(key);
+  DATA[key] = DATA[key].concat(mapped);
+  saveData(); addLog('นำเข้าข้อมูลแบบเพิ่มต่อท้าย ('+mapped.length+' แถว) เข้าตาราง: '+TABLE_DEFS[key].label);
+  renderAll(); showToast('✅ นำเข้าข้อมูลสำเร็จ (เพิ่มต่อท้าย '+mapped.length+' แถว)');
+});
+document.getElementById('importOverwriteBtn').addEventListener('click',()=>{
+  const key = document.getElementById('importTableSelect').value;
+  if(!importedRows){ showToast('กรุณาเลือกไฟล์ก่อน'); return; }
+  if(!confirm('ยืนยันเขียนทับข้อมูลเดิมทั้งหมดในตารางนี้?')) return;
+  const mapped = mapImportedToTable(key);
+  DATA[key] = mapped;
+  saveData(); addLog('นำเข้าข้อมูลแบบเขียนทับ ('+mapped.length+' แถว) เข้าตาราง: '+TABLE_DEFS[key].label);
+  renderAll(); showToast('✅ นำเข้าข้อมูลสำเร็จ (เขียนทับ)');
+});
+
+/* ---- Export ---- */
+document.getElementById('exportAllBtn').addEventListener('click',()=>{
+  const wb = XLSX.utils.book_new();
+  Object.keys(TABLE_DEFS).forEach(key=>{
+    const def = TABLE_DEFS[key];
+    const rows = DATA[key].map(r=>{
+      const o={};
+      def.cols.forEach(c=>o[c[1]] = r[c[0]]);
+      return o;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, key.substring(0,31));
+  });
+  XLSX.writeFile(wb,'dashboard_export_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  addLog('ส่งออกข้อมูลทั้งหมดเป็น Excel');
+  showToast('⬇️ ส่งออกไฟล์ Excel แล้ว');
+});
+document.getElementById('exportJsonBtn').addEventListener('click',()=>{
+  const blob = new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dashboard_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(url);
+  addLog('สำรองข้อมูลเป็น JSON');
+  showToast('⬇️ สำรองข้อมูลเป็น JSON แล้ว');
+});
+
+/* ---- Caption Settings ---- */
+document.getElementById('saveCaptionsBtn').addEventListener('click',()=>{
+  SETTINGS.captions = SETTINGS.captions || {};
+  document.querySelectorAll('#captionFieldsWrap input[data-cap-id], #captionFieldsWrap textarea[data-cap-id]').forEach(inp=>{
+    SETTINGS.captions[inp.dataset.capId] = inp.value;
+  });
+  saveSettings();
+  applyCaptions();
+  addLog('แก้ไขคำอธิบาย (caption) ในหน้า Dashboard');
+  showToast('✅ บันทึกคำอธิบายแล้ว');
+});
+
+/* ---- Settings ---- */
+document.getElementById('saveSettingsBtn').addEventListener('click',()=>{
+  SETTINGS.title = document.getElementById('settingTitle').value || SEED_DATA.meta.title;
+  SETTINGS.subtitle = document.getElementById('settingSubtitle').value || SEED_DATA.meta.subtitle;
+  saveSettings();
+  addLog('แก้ไขข้อความหัวข้อ/คำบรรยายหน้าจอ');
+  renderAll();
+  showToast('✅ บันทึกข้อความแล้ว');
+});
+
+/* ---- Log ---- */
+function renderLog(){
+  let h = '<thead><tr><th>วันที่-เวลา</th><th>รายการ</th></tr></thead><tbody>';
+  h += LOGS.length? LOGS.map(l=>`<tr><td style="white-space:nowrap;">${l.t}</td><td style="text-align:left;">${l.msg}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:left;">ยังไม่มีประวัติการเปลี่ยนแปลง</td></tr>';
+  h += '</tbody>';
+  document.getElementById('logsTable').innerHTML = h;
+}
+document.getElementById('clearLogBtn').addEventListener('click',()=>{
+  LOGS=[]; saveLogs(); renderLog(); showToast('↺ ล้างประวัติแล้ว');
+});
+
+/* ======================= INIT ======================= */
+loadState();
+renderAll();
+// show only sec1 initially (others are section-block, default visible via CSS; hide 2/3/admin)
+document.getElementById('sec2').style.display='none';
+document.getElementById('sec3').style.display='none';
+document.getElementById('secAdmin').style.display='none';
+</script>
+</body>
+</html>
